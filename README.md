@@ -74,3 +74,44 @@ SELECT * FROM orderdetails WHERE orderNumber = @orderNumber
 
 STOP  
 ## Support for the Sales Departments' Report
+Suggested Improvements to Database Design
+Payment Table Enhancement:
+
+Add a Status Column: Include a status column in the payments table to represent whether a payment is complete, partial, or overdue. This will help differentiate between fully paid and partially paid orders.
+Track Payment Amount: Ensure that the table records the amount paid in each transaction so that you can calculate balances easily.
+CREATE TABLE payments (  
+    payment_id INT PRIMARY KEY,  
+    customer_number INT,  
+    order_number INT,  
+    payment_date DATE,  
+    amount DECIMAL(10, 2),  
+    status ENUM('full', 'partial', 'overdue'),  
+    FOREIGN KEY (customer_number) REFERENCES customers(customer_number),  
+    FOREIGN KEY (order_number) REFERENCES orders(order_number)  
+);  
+Balance Calculation Fields:
+
+Order Table Modification: Add a total_amount column to the orders table to store the total amount due for each order. This will provide a reference point for comparing against payment amounts.
+ALTER TABLE orders ADD total_amount DECIMAL(10, 2);  
+Record Payment Installments:
+
+Each installment payment could be recorded as a separate entry in the payments table, with a relation to the respective order. This would allow tracking of multiple payments per order easily.
+Outstanding Balance View:
+
+Create a view that calculates the remaining balance for each order by subtracting the total amount paid from the total cost of the order. This view can be used for reporting purposes.
+CREATE VIEW outstanding_balances AS  
+SELECT   
+    o.order_number,  
+    o.total_amount,  
+    COALESCE(SUM(p.amount), 0) AS total_paid,  
+    (o.total_amount - COALESCE(SUM(p.amount), 0)) AS remaining_balance,  
+    CASE   
+        WHEN (o.total_amount - COALESCE(SUM(p.amount), 0)) > 0 THEN 'Outstanding'   
+        ELSE 'Paid'   
+    END AS payment_status  
+FROM orders o  
+LEFT JOIN payments p ON o.order_number = p.order_number  
+GROUP BY o.order_number, o.total_amount;  
+Client Contact Information:
+
+Ensure relevant contact information is present in the customer records, making it easier for the sales department to follow up with clients who owe money.
